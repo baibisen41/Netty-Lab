@@ -1,9 +1,11 @@
 package com.bbs.framework.server.handler;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.util.CharsetUtil;
 
 /**
  * Created by baibisen on 2018/5/15.
@@ -30,7 +32,14 @@ public class ChatTcpHandlerAdapter extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         super.channelRead(ctx, msg);
-        System.out.println("server rev:" + msg.toString() + "; from:" + ctx.channel().remoteAddress());
+        if (msg instanceof ByteBuf) {
+            String msgStr = ((ByteBuf) msg).toString(CharsetUtil.UTF_8);
+            if ("heart".equals(msgStr)) {
+                System.out.println("heart from:" + ctx.channel().remoteAddress());
+            }
+        } else {
+            System.out.println("server rev:" + msg.toString() + "; from:" + ctx.channel().remoteAddress());
+        }
     }
 
     @Override
@@ -49,9 +58,11 @@ public class ChatTcpHandlerAdapter extends ChannelInboundHandlerAdapter {
         System.out.println("drop Client:" + ctx.channel().remoteAddress());
     }
 
+    // 检测客户端发送心跳 通过IdleStateHandler设置检测心跳间隔
     @Override
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
         super.userEventTriggered(ctx, evt);
+        System.out.println("5s没有收到该客户端消息了：" + ctx.channel().remoteAddress());
     }
 
     @Override

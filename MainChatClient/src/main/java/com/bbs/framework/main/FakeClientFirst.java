@@ -7,6 +7,11 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.codec.string.StringEncoder;
+import io.netty.handler.timeout.IdleState;
+import io.netty.handler.timeout.IdleStateEvent;
+import io.netty.handler.timeout.IdleStateHandler;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by baibisen on 2018/5/15.
@@ -26,7 +31,7 @@ public class FakeClientFirst {
             bootstrap.option(ChannelOption.TCP_NODELAY, true);
             bootstrap.handler(new ChannelInitializer<SocketChannel>() {
                 protected void initChannel(SocketChannel ch) throws Exception {
-                    ch.pipeline().addLast(new StringDecoder(), new StringEncoder(), new FakeClientFirstHandlerAdapter());
+                    ch.pipeline().addLast(new IdleStateHandler(0, 4, 0, TimeUnit.SECONDS), new StringDecoder(), new StringEncoder(), new FakeClientFirstHandlerAdapter());
                 }
             });
             bootstrap.connect("127.0.0.1", 8081).sync();
@@ -63,9 +68,23 @@ public class FakeClientFirst {
             super.channelRegistered(ctx);
         }
 
+        // 客户端发送心跳 通过IdleStateHandler设置发送心跳间隔
         @Override
         public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
             super.userEventTriggered(ctx, evt);
+            if (evt instanceof IdleStateEvent) {
+                if (((IdleStateEvent) evt).state() == IdleState.WRITER_IDLE) {
+                    ctx.channel().writeAndFlush("heart").addListener(new ChannelFutureListener() {
+                        public void operationComplete(ChannelFuture future) throws Exception {
+                            if (future.isSuccess()) {
+                                System.out.println("心跳发送成功");
+                            } else {
+                                System.out.println("心跳发送失败");
+                            }
+                        }
+                    });
+                }
+            }
         }
 
         @Override
